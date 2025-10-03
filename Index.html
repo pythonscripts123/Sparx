@@ -8,28 +8,37 @@
 body { font-family: system-ui; margin: 1rem; max-width: 900px; }
 button { margin-top: .5rem; padding: .5rem 1rem; }
 #answer { font-weight: bold; font-size: 1.2rem; margin-top: 1rem; }
+input { width: 100%; padding: .5rem; margin-top: .2rem; margin-bottom: 1rem; }
 </style>
 </head>
 <body>
 <h1>Sparx Final Answer Helper</h1>
 
-<label>OpenAI API Key:</label><br>
-<input id="apikey" type="password" placeholder="sk-..." style="width:100%;padding:.5rem;"><br><br>
+<label>OpenAI API Key (saved locally):</label><br>
+<input id="apikey" type="password" value="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"><br>
 
 <label>Select Sparx screenshot:</label><br>
-<input type="file" id="file" accept="image/*"><br><br>
+<input type="file" id="file" accept="image/*"><br>
 
 <button id="process">Get Final Answer</button>
 <div id="answer"></div>
 
 <script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
 <script>
+// LocalStorage for API key
+const apiInput = document.getElementById('apikey');
+const savedKey = localStorage.getItem('openai_api_key');
+if(savedKey) apiInput.value = savedKey;
+apiInput.addEventListener('change', ()=>{
+  localStorage.setItem('openai_api_key', apiInput.value.trim());
+});
+
 const fileInput = document.getElementById('file');
 const btn = document.getElementById('process');
 const answerDiv = document.getElementById('answer');
 
 btn.onclick = async () => {
-  const apiKey = document.getElementById('apikey').value.trim();
+  const apiKey = apiInput.value.trim();
   if (!apiKey) { alert('Paste your OpenAI API key'); return; }
 
   const f = fileInput.files[0];
@@ -76,7 +85,7 @@ Give only the final answer. No explanations.`;
     } catch (err) {
       answerDiv.textContent = 'Error fetching AI response: ' + err;
     }
-  }
+  };
 };
 </script>
 </body>
