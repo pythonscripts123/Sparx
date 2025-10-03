@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sparx Final Answer Helper</title>
+<style>
+body { font-family: system-ui; margin: 1rem; max-width: 900px; }
+button { margin-top: .5rem; padding: .5rem 1rem; }
+#answer { font-weight: bold; font-size: 1.2rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<h1>Sparx Final Answer Helper</h1>
+
+<label>OpenAI API Key:</label><br>
+<input id="apikey" type="password" placeholder="sk-..." style="width:100%;padding:.5rem;"><br><br>
+
+<label>Select Sparx screenshot:</label><br>
+<input type="file" id="file" accept="image/*"><br><br>
+
+<button id="process">Get Final Answer</button>
+<div id="answer"></div>
+
+<script src="https://unpkg.com/tesseract.js@v4.1.1/dist/tesseract.min.js"></script>
+<script>
+const fileInput = document.getElementById('file');
+const btn = document.getElementById('process');
+const answerDiv = document.getElementById('answer');
+
+btn.onclick = async () => {
+  const apiKey = document.getElementById('apikey').value.trim();
+  if (!apiKey) { alert('Paste your OpenAI API key'); return; }
+
+  const f = fileInput.files[0];
+  if (!f) { alert('Select a screenshot'); return; }
+
+  answerDiv.textContent = 'Running OCR...';
+  const img = new Image();
+  img.src = URL.createObjectURL(f);
+
+  img.onload = async () => {
+    const { createWorker } = Tesseract;
+    const worker = createWorker();
+    await worker.load();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+
+    const { data } = await worker.recognize(img);
+    await worker.terminate();
+
+    const question = data.text.trim();
+    if (!question) { answerDiv.textContent = 'OCR failed. Try a clearer screenshot.'; return; }
+
+    answerDiv.textContent = 'Fetching final answer...';
+
+    const prompt = `You are a helpful math tutor. The student sent this question:
+"""${question}"""
+Give only the final answer. No explanations.`;
+
+    try {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'system', content: 'You are a helpful math tutor.' }, { role: 'user', content: prompt }],
+          temperature: 0,
+          max_tokens: 100
+        })
+      });
+
+      const dataAI = await resp.json();
+      const text = dataAI.choices[0].message.content.trim();
+      answerDiv.textContent = 'Final Answer: ' + text;
+    } catch (err) {
+      answerDiv.textContent = 'Error fetching AI response: ' + err;
+    }
+  }
+};
+</script>
+</body>
+</html>
